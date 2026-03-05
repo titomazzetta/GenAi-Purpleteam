@@ -1,0 +1,32 @@
+# PurpleLab Configuration
+lab:
+  interface: eth0
+  subnet: 10.10.10.0/24
+  target_ip: 127.0.0.1
+
+wazuh:
+  manager_ip: 127.0.0.1
+  api:
+    user: wazuh-wui
+    password: "PurpleLab2025!"
+  alerts_file: /var/ossec/logs/alerts/alerts.json
+
+suricata:
+  eve_file: /var/log/suricata/eve.json
+  rules_dir: /etc/suricata/rules
+
+zeek:
+  log_dir: /var/log/zeek/current/
+
+auditd:
+  log_file: /var/log/audit/audit.log
+
+ai:
+  provider: ollama
+  model: mistral:7b
+  api_key: ""
+  base_url: "http://localhost:11434"
+
+paths:
+  runs_base: ./runs
+  log_file: ./logs/purplelab.log
