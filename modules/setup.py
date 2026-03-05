@@ -17,6 +17,7 @@ Safety
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -29,6 +30,12 @@ def _run(cmd, check=True, shell=False, verbose=False):
     if verbose:
         print(f"[*] {cmd if isinstance(cmd, str) else ' '.join(cmd)}")
     return subprocess.run(cmd, check=check, shell=shell)
+
+
+def _apt_has_package(pkg: str) -> bool:
+    """Best-effort check whether an apt package exists in configured repos."""
+    result = subprocess.run(["apt-cache", "show", pkg], capture_output=True, text=True)
+    return result.returncode == 0 and bool(result.stdout.strip())
 
 
 def _detect_interface() -> str:
@@ -157,11 +164,25 @@ def guided_configure(config: Dict[str, Any], verbose: bool = False, write_config
 def run(config: Dict[str, Any], force: bool = False, verbose: bool = False) -> None:
     if verbose:
         print("[*] Starting PurpleLab setup (Kali/Debian)...")
+        print(f"[*] Detected architecture: {platform.machine()}")
 
     # System deps (run with sudo)
     _run(["sudo", "apt", "update"], verbose=verbose)
-    deps = ["curl", "wget", "git", "jq", "nmap", "netcat-traditional", "python3-venv"]
-    _run(["sudo", "apt", "install", "-y"] + deps, verbose=verbose)
+
+    base_deps = ["curl", "wget", "git", "jq", "nmap", "python3-venv"]
+    nc_candidates = ["netcat-traditional", "netcat-openbsd"]
+    netcat_pkg = next((pkg for pkg in nc_candidates if _apt_has_package(pkg)), None)
+    if netcat_pkg:
+        base_deps.append(netcat_pkg)
+    else:
+        print("[!] Warning: no netcat package found in apt repos. Emulation may have reduced telemetry.")
+
+    missing = [pkg for pkg in base_deps if not _apt_has_package(pkg)]
+    installable = [pkg for pkg in base_deps if pkg not in missing]
+    if missing:
+        print(f"[!] Warning: these packages were not found and will be skipped: {', '.join(missing)}")
+    if installable:
+        _run(["sudo", "apt", "install", "-y"] + installable, verbose=verbose)
 
     # Python deps into current interpreter (venv)
     if verbose:
