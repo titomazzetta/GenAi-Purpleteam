@@ -53,6 +53,8 @@ def load_config() -> Dict[str, Any]:
     cfg["ai"].setdefault("provider", "ollama")
     cfg["ai"].setdefault("base_url", "http://localhost:11434")
     cfg["ai"].setdefault("timeout_s", 180)
+    cfg["ai"].setdefault("retries", 1)
+    cfg["ai"].setdefault("auto_pull_model", True)
     cfg.setdefault("paths", {})
     cfg["paths"].setdefault("runs_base", "./runs")
     cfg["paths"].setdefault("log_file", "./logs/purplelab.log")
@@ -80,9 +82,17 @@ def doctor(config: Dict[str, Any]) -> int:
     # Ollama
     try:
         base_url = config.get("ai", {}).get("base_url", "http://localhost:11434").rstrip("/")
+        model = config.get("ai", {}).get("model", "mistral")
         r = __import__("requests").get(f"{base_url}/api/tags", timeout=5)
         if r.status_code == 200:
             print(f"✅ Ollama reachable: {base_url}")
+            tags = r.json() or {}
+            models = [m.get("name") for m in tags.get("models", []) if isinstance(m, dict) and m.get("name")]
+            if model in models or any((x or '').split(':',1)[0] == model.split(':',1)[0] for x in models):
+                print(f"✅ Ollama model available: {model}")
+            else:
+                print(f"⚠️  Ollama reachable but model not found locally: {model}")
+                print(f"   Fix: ollama pull {model}")
         else:
             print(f"⚠️  Ollama responded but unexpected status: {r.status_code}")
     except Exception as e:
