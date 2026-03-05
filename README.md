@@ -17,14 +17,6 @@ simulation** and **Blue Team defensive analysis**.
 
 `Automated purple team simulation on a single Debian/Kali VM — AI-generated attack scenarios, safe local emulation, multi-sensor log collection, and Ollama-powered defensive analysis with MITRE ATT&CK mapping.`
 
-## Portfolio Highlights
-
-- Built an end-to-end purple-team workflow in Python (scenario generation → emulation → collection → AI analysis → reporting)
-- Integrated multi-source telemetry (Suricata, auditd, optional Zeek/Wazuh) into a normalized timeline
-- Added MITRE ATT&CK technique mapping with detection coverage scoring to expose visibility gaps
-- Implemented local-LLM analysis via Ollama with deterministic fallback handling for demo resilience
-- Produced repeatable Markdown reports suitable for SOC-style incident review and capstone presentation
-
 ------------------------------------------------------------------------
 
 # Project Overview
