@@ -132,6 +132,22 @@ Detection Coverage:
 
 This demonstrates **security visibility gaps**.
 
+## Sample Run Outcome (what reviewers should look for)
+
+After a successful run (`python3 purplelab.py run demo` or `run full`), reviewers can verify:
+
+- Timeline events captured in `runs/<timestamp>/processed/timeline.json`
+- AI insights in `runs/<timestamp>/processed/ai_insights.json`
+- Final report in `runs/<timestamp>/report.md`
+- Coverage summary in terminal output (Detected vs Missed techniques)
+
+Example checks:
+
+``` bash
+python3 purplelab.py show summary
+python3 purplelab.py show report
+```
+
 ------------------------------------------------------------------------
 
 # AI Security Analysis
@@ -389,6 +405,34 @@ python3 purplelab.py show report
 -   MITRE ATT&CK Framework
 -   Security Log Analysis
 -   Generative AI
+
+------------------------------------------------------------------------
+
+# Skills Demonstrated
+
+- Python automation and CLI workflow design
+- Detection engineering (Suricata/auditd/Zeek/Wazuh log handling)
+- MITRE ATT&CK mapping and coverage analysis
+- SOC-style incident triage and reporting
+- Local LLM integration (Ollama), prompt engineering, and reliability safeguards
+- Linux/VM lab setup and troubleshooting (including ARM64 VMware workflows)
+
+------------------------------------------------------------------------
+
+# Known Limitations and Roadmap
+
+Current limitations:
+
+- Single-host demo mode can underrepresent real multi-host enterprise traffic
+- Detection fidelity depends on local sensor/service readiness and log permissions
+- Local model quality/performance varies by available hardware and selected model
+
+Planned improvements:
+
+- Add baseline-vs-attack differential filtering for cleaner signal isolation
+- Expand ATT&CK coverage with additional deterministic emulation steps
+- Add optional SIEM export adapters and richer detection-rule validation
+- Add benchmarked run artifacts (coverage trends and timing metrics)
 
 ------------------------------------------------------------------------
 
