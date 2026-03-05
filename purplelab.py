@@ -206,7 +206,7 @@ def main() -> None:
         if args.run_type == "demo":
             # Demo = generate + emulate with first 2-3 steps only, then collect/analyze/report
             run_id = emulation.generate_scenario(config, args.verbose, demo_mode=True)
-            emulation.run_local(config, run_id, args.verbose, max_steps=3)
+            emulation.run_local(config, run_id, args.verbose, max_steps=5)
             collector.collect(config, run_id, args.verbose)
             ai_analyzer.analyze(config, run_id, args.verbose)
             reporter.generate(config, run_id, args.verbose)

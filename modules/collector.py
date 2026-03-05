@@ -222,6 +222,10 @@ def parse_audit(file_path: str, timeline: List[Dict[str, Any]]) -> None:
 
                 if "/etc/shadow" in line or "shadow" in line:
                     event['technique'] = "T1003.008"
+                elif "purplelab_payload_sim" in line:
+                    event['technique'] = "T1105"
+                elif "purplelab_revshell_sim" in line or "reverse-shell simulation" in line:
+                    event['technique'] = "T1059.004"
 
                 timeline.append(event)
 

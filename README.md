@@ -7,9 +7,7 @@ An automated **AI-assisted Purple Team simulation lab** for single-VM security t
 simulates adversary behavior, collects multi-sensor telemetry, and performs
 LLM-assisted defensive analysis with MITRE ATT&CK mapping and reporting.
 
-This project was created for a **Cybersecurity Capstone (Project 9)**
-focusing on using Generative AI to assist both **Red Team attack
-simulation** and **Blue Team defensive analysis**.
+Built as a practical cybersecurity engineering project, this repository demonstrates how Generative AI can support both **Red Team simulation** and **Blue Team defensive analysis** in a reproducible lab workflow.
 
 📖 Detailed system design: [Lab Architecture](LAB_ARCHITECTURE.md)
 

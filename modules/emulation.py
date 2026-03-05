@@ -24,6 +24,9 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from . import ai_analyzer
 
+PAYLOAD_SIM_PATH = "/tmp/purplelab_payload_sim.sh"
+REVSHELL_SIM_PATH = "/tmp/purplelab_revshell_sim.sh"
+
 # Default ATT&CK-mapped steps used if AI scenario generation fails.
 # Each step is intentionally non-destructive and designed to generate telemetry.
 DEFAULT_STEPS: List[Dict[str, str]] = [
@@ -76,10 +79,10 @@ DEMO_STEPS: List[Dict[str, str]] = [
         "description": "Attempt to read password hashes for auditd telemetry.",
     },
     {
-        "name": "Outbound Connectivity Check (HTTP)",
-        "technique": "T1071.001",
-        "command": "curl -s -I http://{target}:80 || wget -q --spider http://{target}:80 || true",
-        "description": "Simulate benign web connectivity often used for C2 channels (no payload).",
+        "name": "Credential Access - /etc/shadow Attempt",
+        "technique": "T1003.008",
+        "command": "cat /etc/shadow",
+        "description": "Attempt to read password hashes for auditd telemetry.",
     },
 ]
 
