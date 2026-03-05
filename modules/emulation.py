@@ -17,8 +17,9 @@ import json
 import os
 import subprocess
 import time
+from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping, Optional
 
 from . import ai_analyzer
 
@@ -83,6 +84,31 @@ def ping_target(ip: str, verbose: bool = False) -> bool:
         return False
 
 
+def _build_format_map(config: Dict[str, Any], target: str) -> Mapping[str, str]:
+    """
+    Build a tolerant format mapping for AI-generated command templates.
+
+    Why:
+    - LLMs sometimes invent placeholders like {malicious_server}, {c2}, etc.
+    - Python's str.format raises KeyError on unknown placeholders, aborting the run.
+
+    Behavior:
+    - Known keys are explicitly set.
+    - Unknown keys default to the target IP/host to avoid crashing.
+    """
+    lab_cfg = config.get("lab", {}) if isinstance(config, dict) else {}
+    malicious_server = lab_cfg.get("malicious_server", target)
+
+    fmt = defaultdict(lambda: target)
+    fmt["target"] = target
+    # Common LLM-invented aliases we want to safely support:
+    fmt["malicious_server"] = malicious_server
+    fmt["c2"] = malicious_server
+    fmt["c2_server"] = malicious_server
+    fmt["payload_host"] = malicious_server
+    return fmt
+
+
 def generate_scenario(config: Dict[str, Any], verbose: bool = False, demo_mode: bool = False) -> str:
     if verbose:
         print("[VERBOSE] Generating AI scenario (phishing email + attack plan) via Ollama...")
@@ -101,11 +127,10 @@ def generate_scenario(config: Dict[str, Any], verbose: bool = False, demo_mode: 
         "Commands must be non-destructive and use standard Linux utilities only "
         "(curl/wget, uname/id/ip, cat, ls, nslookup/dig, nmap). "
         "Do NOT include reverse shells, persistence, or malware. "
-        "Use {target} as the target placeholder in commands."
+        "IMPORTANT: Use ONLY {target} as the placeholder in commands. Do not invent other placeholders."
     )
 
     try:
-
         scenario = ai_analyzer.call_llm(config, prompt, json_mode=True)
         if not isinstance(scenario, dict) or "email_subject" not in scenario:
             raise ValueError("Unexpected scenario shape")
@@ -115,7 +140,12 @@ def generate_scenario(config: Dict[str, Any], verbose: bool = False, demo_mode: 
         print(f"[!] AI generation failed: {e}. Using default scenario.")
         scenario = {
             "email_subject": "URGENT: Patient Record Update Required",
-            "email_body": "Dear employee,\n\nWe detected an issue with your patient records. Please verify your information immediately.\n\n[Link]\n\nIT Department",
+            "email_body": (
+                "Dear employee,\n\n"
+                "We detected an issue with your patient records. Please verify your information immediately.\n\n"
+                "[Link]\n\n"
+                "IT Department"
+            ),
             "attack_steps": DEFAULT_STEPS,
         }
 
@@ -130,7 +160,7 @@ def generate_scenario(config: Dict[str, Any], verbose: bool = False, demo_mode: 
     return run_id
 
 
-def run_local(config: Dict[str, Any], run_id: str, verbose: bool = False, max_steps: int | None = None) -> None:
+def run_local(config: Dict[str, Any], run_id: str, verbose: bool = False, max_steps: Optional[int] = None) -> None:
     if not run_id:
         print("[!] No run_id provided. Generate a scenario first.")
         return
@@ -151,21 +181,31 @@ def run_local(config: Dict[str, Any], run_id: str, verbose: bool = False, max_st
     if isinstance(max_steps, int) and max_steps > 0:
         steps = (steps or [])[:max_steps]
 
-    target = config.get('lab', {}).get('target_ip', '127.0.0.1')
+    target = config.get("lab", {}).get("target_ip", "127.0.0.1")
     print(f"[*] Target configured as: {target}")
 
     # ICMP might be blocked; warn but continue.
     if not ping_target(target, verbose=verbose):
         print(f"[!] Ping to {target} failed (ICMP may be blocked). Continuing anyway...")
 
+    fmt_map = _build_format_map(config, target)
+
     os.makedirs(f"{run_dir}/emulation", exist_ok=True)
     log_file = f"{run_dir}/red_runlog.jsonl"
     text_log = f"{run_dir}/emulation/emulation.log"
+
     with open(log_file, "w", encoding="utf-8") as log, open(text_log, "w", encoding="utf-8") as tlog:
         for step in steps:
-            cmd = (step.get('command') or '').format(target=target)
-            name = step.get('name', 'Step')
-            tech = step.get('technique', '')
+            cmd_template = (step.get("command") or "").strip()
+            name = step.get("name", "Step")
+            tech = step.get("technique", "")
+
+            # Tolerant formatting: unknown placeholders become target (prevents KeyError).
+            try:
+                cmd = cmd_template.format_map(fmt_map)
+            except Exception:
+                # As a last resort, run the raw template without formatting rather than crashing.
+                cmd = cmd_template
 
             if verbose:
                 print(f"[VERBOSE] Executing: {cmd}")
@@ -175,7 +215,7 @@ def run_local(config: Dict[str, Any], run_id: str, verbose: bool = False, max_st
             start = datetime.utcnow().isoformat()
             try:
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
-                output = (result.stdout or '') + (result.stderr or '')
+                output = (result.stdout or "") + (result.stderr or "")
                 exit_code = result.returncode
             except subprocess.TimeoutExpired as e:
                 output = str(e)
@@ -186,8 +226,8 @@ def run_local(config: Dict[str, Any], run_id: str, verbose: bool = False, max_st
             end = datetime.utcnow().isoformat()
 
             # write a small excerpt to the text log for report readability
-            excerpt = (output or "").strip().splitlines()
-            excerpt = "\n".join(excerpt[:25])
+            excerpt_lines = (output or "").strip().splitlines()
+            excerpt = "\n".join(excerpt_lines[:25])
             if excerpt:
                 tlog.write(excerpt + "\n")
             tlog.write("\n")
@@ -199,7 +239,7 @@ def run_local(config: Dict[str, Any], run_id: str, verbose: bool = False, max_st
                 "technique": tech,
                 "command": cmd,
                 "exit_code": exit_code,
-                "output": output[:800],
+                "output": (output or "")[:800],
             }
             log.write(json.dumps(record) + "\n")
             log.flush()
@@ -210,8 +250,8 @@ def run_local(config: Dict[str, Any], run_id: str, verbose: bool = False, max_st
     print(f"[+] Emulation complete. Log saved to {log_file}")
 
 
-def get_last_run_id(config: Dict[str, Any]) -> str | None:
-    runs_base = config['paths']['runs_base']
+def get_last_run_id(config: Dict[str, Any]) -> Optional[str]:
+    runs_base = config["paths"]["runs_base"]
     if not os.path.exists(runs_base):
         return None
     runs = [d for d in os.listdir(runs_base) if os.path.isdir(os.path.join(runs_base, d))]
