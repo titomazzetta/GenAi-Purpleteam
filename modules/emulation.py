@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import time
 from collections import defaultdict
@@ -31,6 +32,12 @@ DEFAULT_STEPS: List[Dict[str, str]] = [
         "technique": "T1566.001",
         "command": "curl -s http://{target}/phish.html || wget -q -O /dev/null http://{target}/phish.html",
         "description": "Simulate user clicking a malicious link in phishing email.",
+    },
+    {
+        "name": "DNS Beacon Simulation (Deterministic Rule Trigger)",
+        "technique": "T1071.004",
+        "command": "nslookup malicious.example.com || true; dig malicious.example.com +short || true",
+        "description": "Generate deterministic DNS telemetry that matches PurpleLab Suricata rule.",
     },
     {
         "name": "System Discovery",
@@ -56,11 +63,17 @@ DEFAULT_STEPS: List[Dict[str, str]] = [
         "command": "nmap -sT -p 22,80,443 {target} --open",
         "description": "Scan for open ports.",
     },
+]
+
+# Demo mode should be deterministic and tuned for likely detection signal generation.
+DEMO_STEPS: List[Dict[str, str]] = [
+    DEFAULT_STEPS[0],  # T1566.001 phishing-like web request
+    DEFAULT_STEPS[1],  # T1071.004 deterministic DNS beacon
     {
-        "name": "DNS Beacon Simulation",
-        "technique": "T1071.004",
-        "command": "nslookup test.invalid || true; dig test.invalid +short || true",
-        "description": "Simulate DNS query telemetry without contacting real external infrastructure.",
+        "name": "Credential Access - /etc/shadow Attempt",
+        "technique": "T1003.008",
+        "command": "cat /etc/shadow",
+        "description": "Attempt to read password hashes for auditd telemetry.",
     },
     {
         "name": "Outbound Connectivity Check (HTTP)",
@@ -69,6 +82,14 @@ DEFAULT_STEPS: List[Dict[str, str]] = [
         "description": "Simulate benign web connectivity often used for C2 channels (no payload).",
     },
 ]
+
+
+def _normalize_technique(raw: Any) -> str:
+    if not raw:
+        return ""
+    text = str(raw).upper()
+    m = re.search(r"T\d{4}(?:\.\d{3})?", text)
+    return m.group(0) if m else ""
 
 
 def ping_target(ip: str, verbose: bool = False) -> bool:
@@ -134,6 +155,31 @@ def generate_scenario(config: Dict[str, Any], verbose: bool = False, demo_mode: 
         scenario = ai_analyzer.call_llm(config, prompt, json_mode=True)
         if not isinstance(scenario, dict) or "email_subject" not in scenario:
             raise ValueError("Unexpected scenario shape")
+
+        normalized_steps: List[Dict[str, str]] = []
+        for step in (scenario.get("attack_steps") or []):
+            if not isinstance(step, dict):
+                continue
+            tech = _normalize_technique(step.get("technique"))
+            cmd = (step.get("command") or "").strip()
+            if not tech or not cmd:
+                continue
+            normalized_steps.append(
+                {
+                    "name": (step.get("name") or "Step").strip(),
+                    "technique": tech,
+                    "description": (step.get("description") or step.get("name") or "").strip(),
+                    "command": cmd,
+                }
+            )
+
+        if demo_mode:
+            scenario["attack_steps"] = DEMO_STEPS
+        elif len(normalized_steps) >= 3:
+            scenario["attack_steps"] = normalized_steps
+        else:
+            scenario["attack_steps"] = DEFAULT_STEPS
+
         if verbose:
             print("[VERBOSE] AI scenario generated successfully.")
     except Exception as e:
@@ -146,7 +192,7 @@ def generate_scenario(config: Dict[str, Any], verbose: bool = False, demo_mode: 
                 "[Link]\n\n"
                 "IT Department"
             ),
-            "attack_steps": DEFAULT_STEPS,
+            "attack_steps": DEMO_STEPS if demo_mode else DEFAULT_STEPS,
         }
 
     with open(f"{run_dir}/scenario/email_template.txt", "w", encoding="utf-8") as f:
