@@ -168,6 +168,35 @@ Minimum Requirements:
 -   Internet connection
 -   sudo privileges
 
+### ARM64 Kali on VMware Fusion (Mac Studio) checklist
+
+If you are running Kali ARM64 in VMware Fusion on Apple Silicon, this project is compatible with that setup.
+Use this quick checklist before running the lab:
+
+-   Confirm architecture is ARM64:
+
+``` bash
+uname -m
+```
+
+Expected: `aarch64` or `arm64`
+
+-   Ensure VMware guest tools are installed (improves VM networking and clock sync):
+
+``` bash
+sudo apt update
+sudo apt install -y open-vm-tools open-vm-tools-desktop
+```
+
+-   Verify your VM NIC appears (often `ens33`, `eth0`, or similar):
+
+``` bash
+ip -br a
+ip route
+```
+
+PurpleLab defaults to `interface: auto`, which is recommended for VMware environments.
+
 ------------------------------------------------------------------------
 
 # Step 1 --- Install Ollama
@@ -275,6 +304,12 @@ Expected output:
 ``` bash
 python3 purplelab.py run demo
 ```
+
+Notes for reliable demo detections:
+
+- Run setup once first (`python3 purplelab.py setup`) so auditd/Suricata rules are in place.
+- Demo mode uses deterministic safe steps that are easier to detect across ARM64 and x86_64.
+- If coverage is still low, verify sensor services are running and that your user can read/export logs.
 
 ------------------------------------------------------------------------
 

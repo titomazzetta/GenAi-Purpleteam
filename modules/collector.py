@@ -91,6 +91,9 @@ def collect(config: Dict[str, Any], run_id: str, verbose: bool = False) -> None:
 
     if verbose:
         print(f"[VERBOSE] Timeline has {len(timeline)} events. Enriched bundle saved.")
+    if len(timeline) == 0:
+        print("[!] Warning: No telemetry events were collected.")
+        print("    Check sensors and permissions: suricata/auditd services, log paths, and sudo access for ausearch.")
     print(f"[+] Collection complete. Timeline has {len(timeline)} events.")
 
 
@@ -120,6 +123,14 @@ def parse_suricata(file_path: str, timeline: List[Dict[str, Any]]) -> None:
                 # Deterministic mapping for our custom rule
                 if rec.get('alert') and rec['alert'].get('signature_id') == 1000001:
                     event['technique'] = "T1071.004"  # DNS
+                elif rec.get('event_type') == 'dns':
+                    event['technique'] = "T1071.004"
+                elif rec.get('event_type') == 'http':
+                    event['technique'] = "T1071.001"
+                elif rec.get('alert') and isinstance(rec.get('alert'), dict):
+                    sig = str(rec['alert'].get('signature', '')).lower()
+                    if 'nmap' in sig or 'scan' in sig:
+                        event['technique'] = "T1046"
 
                 timeline.append(event)
             except Exception:
