@@ -36,7 +36,7 @@ ai:
 features:
   install_ollama: true
   install_zeek: true
-  install_wazuh: true
+  install_wazuh: false
 
 paths:
   runs_base: ./runs
