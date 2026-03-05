@@ -22,7 +22,7 @@ PurpleLab is a Python CLI tool that automates a complete red team / blue team ex
 ## Installation
 
 ```bash
-git clone git clone https://github.com/titomazzetta/GenAi-Purpletea.git
+git clone git clone https://github.com/titomazzetta/GenAi-Purpleteam.git
 cd purplelab
 pip install -r requirements.txt
 sudo python3 purplelab.py setup   # Installs all sensors and Ollama
