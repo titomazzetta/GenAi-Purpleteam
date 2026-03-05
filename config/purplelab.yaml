@@ -1,15 +1,11 @@
-# PurpleLab Configuration
+# PurpleLab Configuration (ARM64 Kali-friendly)
 
 lab:
-  interface: eth0
+  interface: auto        # safer than hardcoding eth0; Suricata will still be configured
   subnet: 10.10.10.0/24
   target_ip: 127.0.0.1
 
 wazuh:
-  manager_ip: 127.0.0.1
-  api:
-    user: wazuh-wui
-    password: "PurpleLab2025!"
   alerts_file: /var/ossec/logs/alerts/alerts.json
 
 suricata:
@@ -22,25 +18,28 @@ zeek:
 auditd:
   log_file: /var/log/audit/audit.log
 
-
-# Enable / disable sensors
+# Optional toggles your pipeline can use (and you can reference in reports)
 sensors:
   suricata: true
   zeek: false
   wazuh: false
   auditd: true
 
-
-# AI Analysis Configuration
 ai:
-  enabled: true
   provider: ollama
   base_url: "http://localhost:11434"
   model: "mistral:latest"
   timeout_s: 600
+
+  # VM-hardening knobs (used by your updated ai_analyzer.py)
   max_events_for_ai: 15
   max_bundle_chars: 60000
+  max_raw_chars_per_event: 250
 
+features:
+  install_ollama: true
+  install_zeek: false
+  install_wazuh: false
 
 paths:
   runs_base: ./runs

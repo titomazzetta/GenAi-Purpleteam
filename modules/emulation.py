@@ -57,16 +57,16 @@ DEFAULT_STEPS: List[Dict[str, str]] = [
         "description": "Scan for open ports.",
     },
     {
-        "name": "C2 DNS Beacon",
+        "name": "DNS Beacon Simulation",
         "technique": "T1071.004",
-        "command": "nslookup malicious.example.com; ping -c 1 malicious.example.com",
-        "description": "Simulate DNS beacon to C2 server.",
+        "command": "nslookup test.invalid || true; dig test.invalid +short || true",
+        "description": "Simulate DNS query telemetry without contacting real external infrastructure.",
     },
     {
-        "name": "Reverse Shell Simulation",
+        "name": "Outbound Connectivity Check (HTTP)",
         "technique": "T1071.001",
-        "command": "nc -zv {target} 4444 || curl -s http://{target}:4444 || echo 'Simulated reverse shell'",
-        "description": "Attempt connection to reverse shell listener.",
+        "command": "curl -s -I http://{target}:80 || wget -q --spider http://{target}:80 || true",
+        "description": "Simulate benign web connectivity often used for C2 channels (no payload).",
     },
 ]
 
