@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
@@ -36,13 +37,18 @@ def _coverage(attack_plan: List[Dict[str, Any]], timeline: List[Dict[str, Any]])
 
     Important: only treat *sensor* sources as detections. Emulation logs should not count.
     """
-    emulated = {s.get("technique") for s in (attack_plan or []) if s.get("technique")}
+    def _tid(raw: Any) -> str:
+        text = str(raw or "").upper()
+        m = re.search(r"T\d{4}(?:\.\d{3})?", text)
+        return m.group(0) if m else ""
+
+    emulated = {_tid(s.get("technique")) for s in (attack_plan or []) if _tid(s.get("technique"))}
 
     sensor_sources = {"suricata", "zeek", "auditd", "wazuh"}
     detected = {
-        e.get("technique")
+        _tid(e.get("technique"))
         for e in (timeline or [])
-        if e.get("technique") and (e.get("source") in sensor_sources)
+        if _tid(e.get("technique")) and (e.get("source") in sensor_sources)
     }
 
     rows: List[Dict[str, Any]] = []
