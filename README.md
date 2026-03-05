@@ -1,145 +1,325 @@
-# PurpleLab — Automated Purple Team Simulation (Ollama-only)
 
-PurpleLab is a **lab-only** purple-team automation project that demonstrates an end-to-end workflow:
+# GenAI Purple Team Lab
 
-1. **Red Team (safe emulation):** generate an AI-driven scenario + ATT&CK-mapped plan, then run **non-destructive** commands to create telemetry
-2. **Blue Team (telemetry):** collect logs from common sensors (Suricata/Zeek/auditd/Wazuh where available)
-3. **SOC triage (GenAI via Ollama):** extract IOCs, map ATT&CK, identify detection gaps, and recommend mitigations
-4. **Reporting:** output a **portfolio-ready** `report.md` with **detection coverage scoring** and recommended defensive actions
+An automated **AI‑assisted Purple Team simulation lab** that demonstrates how Generative AI can be used to simulate attacks, analyze logs, extract Indicators of Compromise (IOCs), evaluate detection coverage, and generate mitigation recommendations.
 
-> This repository is intentionally **Ollama-only** (no OpenAI dependencies).
+This project was created for a **Cybersecurity Capstone (Project 9)** focusing on using Generative AI to assist both **Red Team attack simulation** and **Blue Team defensive analysis**.
 
 ---
 
-## Safety / Scope
+# Project Overview
 
-- **Educational lab simulation only.**
-- No malware, persistence, or real exploitation.
-- Emulation uses standard Linux utilities (curl/wget/uname/id/ip/cat/nslookup/dig/nmap) to generate detection signals.
+Purple Teaming combines:
 
----
+**Red Team**
+Simulate realistic attack scenarios.
 
-## What you get at the end of a run
+**Blue Team**
+Detect, analyze, and respond to those attacks.
 
-A run creates a folder:
+This project automates both sides using:
 
-`runs/<run_id>/`
-
-Key outputs:
-
-- `report.md` — final GitHub-friendly report (coverage score + gaps + mitigations)
-- `processed/timeline.json` — normalized telemetry timeline
-- `processed/ai_insights.json` — raw AI JSON (Ollama)
-- `iocs/iocs.stix.json` — IOC bundle (STIX 2.1 where applicable)
-- `rules/` — drafted Sigma rules + Suricata rules
+• Python automation  
+• Security log collection  
+• MITRE ATT&CK mapping  
+• AI analysis using **Ollama (local LLM)**  
+• Automated reporting and defensive recommendations
 
 ---
 
-## Quickstart (Kali / Debian)
+# Architecture Workflow
 
-### 0) Clone + create a venv (recommended on Kali)
+```
+Attack Simulation (Red Team)
+        ↓
+System & Network Log Collection
+        ↓
+AI Log Analysis (Ollama)
+        ↓
+IOC Extraction + MITRE ATT&CK Mapping
+        ↓
+Detection Coverage Scoring
+        ↓
+AI‑Generated Mitigation Recommendations
+        ↓
+Automated Security Report
+```
 
-```bash
-<<<<<<< HEAD
-git clone git clone https://github.com/titomazzetta/GenAi-Purpleteam.git
-=======
-git clone <YOUR_REPO_URL>
->>>>>>> 2d06cee (Finalize PurpleLab AI-driven purple team simulation with Ollama analysis, detection coverage scoring, and SOC mitigation reporting)
-cd purplelab
+---
 
+# Key Features
+
+## AI Attack Simulation
+Generates realistic attack scenarios using Generative AI.
+
+Examples:
+
+• Spearphishing simulation  
+• Command execution  
+• Reverse shell activity  
+• Credential access simulation  
+
+---
+
+## Blue Team Log Analysis
+
+The system collects logs such as:
+
+• system logs  
+• network events  
+• security alerts  
+• command execution traces  
+
+AI then analyzes these logs to identify suspicious activity.
+
+---
+
+## MITRE ATT&CK Mapping
+
+Detected activity is mapped to MITRE ATT&CK techniques such as:
+
+• **T1566.001** – Spearphishing Attachment  
+• **T1059.003** – Command Shell  
+• **T1003** – Credential Dumping  
+
+---
+
+## Detection Coverage Scoring
+
+The lab measures how well the simulated environment detects attacks.
+
+Example:
+
+| Technique | Emulated | Detected |
+|----------|----------|----------|
+| T1566.001 | Yes | Yes |
+| T1059.003 | Yes | No |
+
+Detection Coverage:
+
+```
+2 / 3 techniques detected
+Coverage: 66%
+```
+
+This helps demonstrate **security gaps**.
+
+---
+
+## AI Security Analysis
+
+Using **Ollama**, the AI model analyzes logs and produces:
+
+• Indicators of Compromise (IOCs)  
+• Detection gaps  
+• Threat analysis  
+• Defensive recommendations  
+
+Example output:
+
+```
+Indicators of Compromise
+• suspicious-domain.xyz
+• reverse shell to 10.10.10.5
+• encoded PowerShell command
+```
+
+---
+
+## AI Mitigation Recommendations
+
+The AI also suggests defensive improvements such as:
+
+• Implement DMARC and phishing filtering  
+• Add SIEM detection rules  
+• Monitor outbound traffic to unknown IPs  
+• Deploy endpoint monitoring
+
+This demonstrates **SOC Level‑2 response capabilities**.
+
+---
+
+# Project Structure
+
+```
+GenAi-Purpleteam
+│
+├── purplelab.py
+│
+├── modules
+│   ├── ai_analyzer.py
+│   ├── collector.py
+│   ├── emulation.py
+│   ├── reporter.py
+│   └── setup.py
+│
+├── config
+│   └── purplelab.yaml
+│
+├── requirements.txt
+├── README.md
+└── LICENSE
+```
+
+---
+
+# Installation
+
+## Clone the Repository
+
+```
+git clone https://github.com/titomazzetta/GenAi-Purpleteam.git
+cd GenAi-Purpleteam
+```
+
+---
+
+## Create Python Virtual Environment
+
+```
 python3 -m venv .venv
 source .venv/bin/activate
+```
+
+---
+
+## Install Dependencies
+
+```
 pip install -r requirements.txt
 ```
 
-### 1) Guided installer (recommended)
+---
 
-This will:
-- install sensors (Suricata + auditd, optional Zeek/Wazuh)
-- install Ollama (optional)
-- detect your capture interface
-- let you select an installed Ollama model
+# Install Ollama
 
-```bash
-sudo -H -E .venv/bin/python3 purplelab.py setup --guided
+This project uses **Ollama** for local AI analysis.
+
+Install Ollama:
+
+https://ollama.ai
+
+Pull a model:
+
+```
+ollama pull llama3
 ```
 
-### 2) Run a fast demo (optional)
+---
 
-Great for validating your environment quickly:
+# Running the Purple Team Lab
 
-```bash
+## Verify Environment
+
+```
+python3 purplelab.py doctor
+```
+
+This checks:
+
+• Python environment  
+• AI connectivity  
+• configuration settings
+
+---
+
+## Run Demo Simulation
+
+```
 python3 purplelab.py run demo
 ```
 
-### 3) Run the full exercise
+This runs a quick attack simulation and analysis.
 
-```bash
+---
+
+## Run Full Purple Team Simulation
+
+```
 python3 purplelab.py run full
 ```
 
-At the end, PurpleLab prints a **terminal summary panel** (coverage %, top IOCs, top mitigations) and writes:
+The system will:
 
-`runs/<run_id>/report.md`
-
----
-
-## CLI Commands
-
-### Setup / checks
-- `python3 purplelab.py init` — interactive config writer (no installs)
-- `python3 purplelab.py setup --guided` — guided installer
-- `python3 purplelab.py doctor` — basic health checks (Ollama reachable, sensors present)
-
-### Run modes
-- `python3 purplelab.py run demo` — fast run (short emulation)
-- `python3 purplelab.py run full` — generate + emulate + collect + analyze + report
-- `python3 purplelab.py run generate` — scenario generation only
-- `python3 purplelab.py run emulate --run-id <id>` — emulation only
-- `python3 purplelab.py run collect <id>` — collect logs only
-- `python3 purplelab.py run analyze <id>` — AI analysis only
-- `python3 purplelab.py run report <id>` — report generation only
-
-### Show artifacts in terminal
-- `python3 purplelab.py show summary --run-id <id>`
-- `python3 purplelab.py show report --run-id <id>`
-- `python3 purplelab.py show insights --run-id <id>`
+1. Generate an attack scenario  
+2. Execute the simulated attack  
+3. Collect system logs  
+4. Analyze logs using AI  
+5. Extract IOCs  
+6. Calculate detection coverage  
+7. Generate mitigation recommendations  
+8. Produce a final report
 
 ---
 
-## How this satisfies “Project 9” style requirements
+# Output Reports
 
-This project demonstrates:
+Results are stored in:
 
-- **GenAI attack simulation** (scenario + plan generation via Ollama)
-- **Attacker behavior emulation** (safe, non-destructive command execution)
-- **Blue Team analysis** (collect + normalize sensor logs)
-- **SOC L2 response** (IOCs + ATT&CK mapping + detection gaps + mitigations)
-- **Final reporting** (coverage scoring + evidence + recommended defenses)
+```
+runs/<timestamp>/report.md
+```
 
----
+Example report sections:
 
-## Notes for GitHub
-
-- Do **not** commit `runs/`, `logs/`, or `__pycache__/` — these are ignored via `.gitignore`.
-- If you want screenshots in the report, add them under `runs/<run_id>/evidence/` and link them in `report.md`.
-
----
-
-## Troubleshooting
-
-### Ollama not reachable
-- Ensure Ollama is running:
-  - `ollama serve`
-- Check:
-  - `curl http://localhost:11434/api/tags`
-
-### Suricata not producing alerts
-- Confirm interface and permissions
-- Run:
-  - `sudo suricata -T -c /etc/suricata/suricata.yaml`
+• Attack plan  
+• Attack timeline  
+• Indicators of compromise  
+• MITRE ATT&CK mapping  
+• Detection coverage score  
+• Recommended mitigations  
+• SOC analyst playbook
 
 ---
 
-## License
-Educational use.
+# Example Terminal Output
+
+```
+============================================
+PURPLE LAB — AI DEFENSIVE ANALYSIS
+============================================
+
+Detection Coverage: 75%
+
+Indicators of Compromise
+• suspicious-domain.xyz
+• reverse shell connection
+
+Missed Detection
+• T1059.003 Command Shell
+
+Recommended Mitigations
+• Implement email filtering
+• Add SIEM rule for encoded PowerShell
+• Monitor outbound reverse shell traffic
+
+Report generated:
+runs/2026-03-05/report.md
+```
+
+---
+
+# Technologies Used
+
+Python  
+Ollama (Local LLM)  
+MITRE ATT&CK Framework  
+Security Log Analysis  
+Generative AI
+
+---
+
+# Educational Purpose
+
+This project demonstrates how Generative AI can assist in:
+
+• automated red team simulation  
+• blue team log analysis  
+• security detection evaluation  
+• incident response recommendations
+
+---
+
+# License
+
+MIT License
