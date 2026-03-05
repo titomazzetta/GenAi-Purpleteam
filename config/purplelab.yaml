@@ -27,9 +27,9 @@ ai:
   enabled: true
   provider: ollama
   host: "http://localhost:11434"
-  model_default: "llama3.1:8b-instruct"
+  model_default: "mistral:latest"
   model_fallbacks:
-    - "mistral:7b-instruct"
+    - "llama3:latest"
     - "phi3:mini"
   pull_default_on_setup: true
 
