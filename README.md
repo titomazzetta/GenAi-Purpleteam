@@ -310,6 +310,9 @@ Notes for reliable demo detections:
 - Run setup once first (`python3 purplelab.py setup`) so auditd/Suricata rules are in place.
 - Demo mode uses deterministic safe steps that are easier to detect across ARM64 and x86_64.
 - If coverage is still low, verify sensor services are running and that your user can read/export logs.
+- Collection is non-blocking: if `sudo` needs a password, audit export is skipped instead of hanging.
+- If Ollama is offline, PurpleLab now generates deterministic fallback insights + candidate IOCs from telemetry so results are still useful.
+- For capstone/demo reliability, keep `ai.auto_pull_model: true` and set `ai.retries: 1` (or higher) in `config/purplelab.yaml`.
 
 ------------------------------------------------------------------------
 

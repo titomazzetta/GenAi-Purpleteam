@@ -16,10 +16,156 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import time
 from typing import Any, Dict, Optional
 
 import requests
+
+
+def _heuristic_insights(bundle: Dict[str, Any]) -> Dict[str, Any]:
+    """Fallback insights when Ollama is unavailable.
+
+    Produces deterministic defensive output so runs still demonstrate value
+    even if the local model/service is down.
+    """
+    timeline = bundle.get("timeline") if isinstance(bundle, dict) else []
+    if not isinstance(timeline, list):
+        timeline = []
+
+    iocs = []
+    seen = set()
+
+    def add_ioc(ioc_type: str, value: str, notes: str) -> None:
+        key = (ioc_type, value)
+        if not value or key in seen:
+            return
+        seen.add(key)
+        iocs.append({"type": ioc_type, "value": value, "confidence": "medium", "notes": notes})
+
+    for e in timeline:
+        if not isinstance(e, dict):
+            continue
+        dip = e.get("dest_ip")
+        sip = e.get("src_ip")
+        if isinstance(dip, str) and dip and dip not in {"127.0.0.1", "::1"}:
+            add_ioc("ipv4-addr", dip, "Observed destination in captured telemetry")
+        if isinstance(sip, str) and sip and sip not in {"127.0.0.1", "::1"}:
+            add_ioc("ipv4-addr", sip, "Observed source in captured telemetry")
+
+        dns = e.get("dns")
+        if isinstance(dns, dict):
+            q = dns.get("rrname") or dns.get("query")
+            if isinstance(q, str):
+                add_ioc("domain-name", q.strip('.'), "Observed DNS query")
+        q2 = e.get("query")
+        if isinstance(q2, str):
+            add_ioc("domain-name", q2.strip('.'), "Observed DNS query")
+
+        http = e.get("http")
+        if isinstance(http, dict):
+            host = http.get("hostname") or http.get("host")
+            url = http.get("url")
+            if isinstance(host, str) and isinstance(url, str) and host and url:
+                add_ioc("url", f"http://{host}{url}", "Observed HTTP request")
+
+        raw = str(e.get("raw") or "")
+        if "/etc/shadow" in raw:
+            add_ioc("file-path", "/etc/shadow", "Sensitive file access attempt observed")
+
+    techniques = sorted({e.get("technique") for e in timeline if isinstance(e, dict) and e.get("technique")})
+    findings = [f"Telemetry events analyzed: {len(timeline)}"]
+    if techniques:
+        findings.append("Observed ATT&CK techniques: " + ", ".join(techniques[:8]))
+    if iocs:
+        findings.append(f"Extracted {len(iocs)} candidate IOC(s) from telemetry without LLM dependency.")
+
+    return {
+        "executive_summary": "Fallback analysis was used because Ollama was unavailable. Findings were derived from collected telemetry using deterministic parsing.",
+        "key_findings": findings,
+        "iocs": iocs[:20],
+        "mitre_techniques": [
+            {
+                "id": t,
+                "name": "Observed technique",
+                "why_it_matches": "Technique tag present in normalized timeline event.",
+                "evidence": "timeline[].technique",
+            }
+            for t in techniques[:12]
+        ],
+        "detection_gaps": [],
+        "recommended_mitigations": [
+            "Ensure Suricata and auditd are running before demo execution.",
+            "Tune collection scope to reduce noisy background telemetry.",
+            "Run Ollama locally for richer contextual analysis and rule suggestions.",
+        ],
+        "defensive_improvements": [
+            "Enable strict egress DNS/HTTP monitoring for high-signal detections.",
+            "Forward normalized timeline data to SIEM with ATT&CK tags.",
+        ],
+        "soc_playbook": [
+            "Validate sensor health (suricata/auditd/zeek) and log freshness.",
+            "Review extracted IOC list and pivot across local logs.",
+            "Correlate detected ATT&CK techniques with control coverage gaps.",
+        ],
+        "awareness_points": [
+            "Phishing click simulation should trigger network telemetry.",
+            "Credential-file access attempts should be monitored by host audit controls.",
+        ],
+        "sigma_rules": [],
+        "suricata_rules": [],
+        "analysis_mode": "heuristic_fallback",
+    }
+
+
+
+
+def _list_local_models(base_url: str, timeout_s: int = 5) -> list[str]:
+    """Return model tags available in local Ollama."""
+    r = requests.get(f"{base_url.rstrip('/')}/api/tags", timeout=timeout_s)
+    r.raise_for_status()
+    data = r.json() or {}
+    return [m.get("name", "") for m in data.get("models", []) if isinstance(m, dict) and m.get("name")]
+
+
+def _ensure_model_available(base_url: str, model: str, timeout_s: int = 5) -> None:
+    """Ensure the configured model is present locally; try auto-pull if missing."""
+    local = set(_list_local_models(base_url, timeout_s=timeout_s))
+    if model in local:
+        return
+
+    # Accept either exact tag match or same base model family (e.g., mistral vs mistral:latest).
+    base = model.split(":", 1)[0]
+    if any(m.split(":", 1)[0] == base for m in local):
+        return
+
+    if not shutil.which("ollama"):
+        raise RuntimeError(
+            f"Ollama model '{model}' is not installed and 'ollama' CLI is not available to pull it."
+        )
+
+    pull = subprocess.run(["ollama", "pull", model], check=False, capture_output=True, text=True)
+    if pull.returncode != 0:
+        stderr = (pull.stderr or "").strip()[-500:]
+        raise RuntimeError(f"Failed to pull Ollama model '{model}': {stderr or 'unknown error'}")
+
+
+def _call_with_retry(base_url: str, model: str, prompt: str, json_mode: bool, timeout_s: int, retries: int) -> str:
+    """Retry Ollama generate calls for transient local service hiccups."""
+    last_err: Optional[Exception] = None
+    attempts = max(1, retries + 1)
+    for i in range(attempts):
+        try:
+            return _ollama_generate(base_url, model, prompt, json_mode=json_mode, timeout_s=timeout_s)
+        except Exception as e:
+            last_err = e
+            if i < attempts - 1:
+                time.sleep(1 + i)
+                continue
+            break
+    assert last_err is not None
+    raise last_err
 
 
 def _ollama_generate(base_url: str, model: str, prompt: str, json_mode: bool, timeout_s: int) -> str:
@@ -57,8 +203,13 @@ def call_llm(config: Dict[str, Any], prompt: str, json_mode: bool = False) -> An
     base_url = ai_cfg.get("base_url", "http://localhost:11434")
     model = ai_cfg.get("model", "mistral")
     timeout_s = int(ai_cfg.get("timeout_s", 180))
+    retries = int(ai_cfg.get("retries", 1))
+    auto_pull_model = bool(ai_cfg.get("auto_pull_model", True))
 
-    raw = _ollama_generate(base_url, model, prompt, json_mode=json_mode, timeout_s=timeout_s)
+    if auto_pull_model:
+        _ensure_model_available(base_url, model, timeout_s=min(10, timeout_s))
+
+    raw = _call_with_retry(base_url, model, prompt, json_mode=json_mode, timeout_s=timeout_s, retries=retries)
 
     if not json_mode:
         return raw
@@ -125,7 +276,9 @@ def analyze(config: Dict[str, Any], run_id: str, verbose: bool = False) -> None:
             print("[VERBOSE] AI analysis received and parsed.")
     except Exception as e:
         print(f"[!] AI analysis failed: {e}")
-        insights = {"error": str(e)}
+        print("[!] Falling back to deterministic heuristic analysis.")
+        insights = _heuristic_insights(bundle)
+        insights["error"] = str(e)
 
     os.makedirs(f"{run_dir}/processed", exist_ok=True)
     with open(f"{run_dir}/processed/ai_insights.json", "w", encoding="utf-8") as f:
