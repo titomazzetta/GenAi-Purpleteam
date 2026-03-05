@@ -1,61 +1,145 @@
-# PurpleLab: Automated Purple Team Simulation with Generative AI
+# PurpleLab — Automated Purple Team Simulation (Ollama-only)
 
-PurpleLab is a Python CLI tool that automates a complete red team / blue team exercise on a single Debian VM. It simulates a phishing attack, collects telemetry using Wazuh, Suricata, Zeek, and auditd, and leverages a local LLM (Mistral 7B via Ollama) to analyze the incident and generate a professional report.
+PurpleLab is a **lab-only** purple-team automation project that demonstrates an end-to-end workflow:
 
-## Features
+1. **Red Team (safe emulation):** generate an AI-driven scenario + ATT&CK-mapped plan, then run **non-destructive** commands to create telemetry
+2. **Blue Team (telemetry):** collect logs from common sensors (Suricata/Zeek/auditd/Wazuh where available)
+3. **SOC triage (GenAI via Ollama):** extract IOCs, map ATT&CK, identify detection gaps, and recommend mitigations
+4. **Reporting:** output a **portfolio-ready** `report.md` with **detection coverage scoring** and recommended defensive actions
 
-- **AI-generated phishing email and attack plan** (MITRE ATT&CK mapped)
-- **Safe local emulation** of post-click behaviors (discovery, credential access, C2)
-- **Comprehensive log collection** from Suricata, Zeek, auditd, and Wazuh
-- **Correlation and timeline building**
-- **AI-powered defensive analysis** (IOCs, detection rules, hardening recommendations)
-- **Automatic Markdown report generation** with all artifacts
-- **Single VM deployment** – easy to demo and share
+> This repository is intentionally **Ollama-only** (no OpenAI dependencies).
 
-## Requirements
+---
 
-- Debian 12 (or 11) VM
-- **Minimum 8GB RAM** (for 4-bit quantized Mistral)
-- 20GB free disk space
-- Root access (for installing sensors)
+## Safety / Scope
 
-## Installation
+- **Educational lab simulation only.**
+- No malware, persistence, or real exploitation.
+- Emulation uses standard Linux utilities (curl/wget/uname/id/ip/cat/nslookup/dig/nmap) to generate detection signals.
+
+---
+
+## What you get at the end of a run
+
+A run creates a folder:
+
+`runs/<run_id>/`
+
+Key outputs:
+
+- `report.md` — final GitHub-friendly report (coverage score + gaps + mitigations)
+- `processed/timeline.json` — normalized telemetry timeline
+- `processed/ai_insights.json` — raw AI JSON (Ollama)
+- `iocs/iocs.stix.json` — IOC bundle (STIX 2.1 where applicable)
+- `rules/` — drafted Sigma rules + Suricata rules
+
+---
+
+## Quickstart (Kali / Debian)
+
+### 0) Clone + create a venv (recommended on Kali)
 
 ```bash
+<<<<<<< HEAD
 git clone git clone https://github.com/titomazzetta/GenAi-Purpleteam.git
+=======
+git clone <YOUR_REPO_URL>
+>>>>>>> 2d06cee (Finalize PurpleLab AI-driven purple team simulation with Ollama analysis, detection coverage scoring, and SOC mitigation reporting)
 cd purplelab
+
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-sudo python3 purplelab.py setup   # Installs all sensors and Ollama
 ```
 
-## Quick Start
+### 1) Guided installer (recommended)
 
-After setup, run a full exercise:
+This will:
+- install sensors (Suricata + auditd, optional Zeek/Wazuh)
+- install Ollama (optional)
+- detect your capture interface
+- let you select an installed Ollama model
+
+```bash
+sudo -H -E .venv/bin/python3 purplelab.py setup --guided
+```
+
+### 2) Run a fast demo (optional)
+
+Great for validating your environment quickly:
+
+```bash
+python3 purplelab.py run demo
+```
+
+### 3) Run the full exercise
 
 ```bash
 python3 purplelab.py run full
 ```
 
-Or run individual steps:
+At the end, PurpleLab prints a **terminal summary panel** (coverage %, top IOCs, top mitigations) and writes:
 
-```bash
-python3 purplelab.py run generate              # Generate phishing email + attack plan
-python3 purplelab.py run emulate --run-id XXX  # Emulate the attack
-python3 purplelab.py run collect XXX           # Collect logs
-python3 purplelab.py run analyze XXX           # Run AI analysis
-python3 purplelab.py run report XXX            # Generate report
-```
+`runs/<run_id>/report.md`
 
-## Output
+---
 
-All artifacts are stored in `runs/{run_id}/`:
-- `scenario/` – Generated phishing email and attack plan
-- `raw/` – Raw logs from all sensors
-- `processed/` – Timeline and enriched bundle
-- `iocs/` – STIX IOC data
-- `rules/` – Sigma and Suricata detection rules
-- `report.md` – Final Markdown report
+## CLI Commands
+
+### Setup / checks
+- `python3 purplelab.py init` — interactive config writer (no installs)
+- `python3 purplelab.py setup --guided` — guided installer
+- `python3 purplelab.py doctor` — basic health checks (Ollama reachable, sensors present)
+
+### Run modes
+- `python3 purplelab.py run demo` — fast run (short emulation)
+- `python3 purplelab.py run full` — generate + emulate + collect + analyze + report
+- `python3 purplelab.py run generate` — scenario generation only
+- `python3 purplelab.py run emulate --run-id <id>` — emulation only
+- `python3 purplelab.py run collect <id>` — collect logs only
+- `python3 purplelab.py run analyze <id>` — AI analysis only
+- `python3 purplelab.py run report <id>` — report generation only
+
+### Show artifacts in terminal
+- `python3 purplelab.py show summary --run-id <id>`
+- `python3 purplelab.py show report --run-id <id>`
+- `python3 purplelab.py show insights --run-id <id>`
+
+---
+
+## How this satisfies “Project 9” style requirements
+
+This project demonstrates:
+
+- **GenAI attack simulation** (scenario + plan generation via Ollama)
+- **Attacker behavior emulation** (safe, non-destructive command execution)
+- **Blue Team analysis** (collect + normalize sensor logs)
+- **SOC L2 response** (IOCs + ATT&CK mapping + detection gaps + mitigations)
+- **Final reporting** (coverage scoring + evidence + recommended defenses)
+
+---
+
+## Notes for GitHub
+
+- Do **not** commit `runs/`, `logs/`, or `__pycache__/` — these are ignored via `.gitignore`.
+- If you want screenshots in the report, add them under `runs/<run_id>/evidence/` and link them in `report.md`.
+
+---
+
+## Troubleshooting
+
+### Ollama not reachable
+- Ensure Ollama is running:
+  - `ollama serve`
+- Check:
+  - `curl http://localhost:11434/api/tags`
+
+### Suricata not producing alerts
+- Confirm interface and permissions
+- Run:
+  - `sudo suricata -T -c /etc/suricata/suricata.yaml`
+
+---
 
 ## License
-
-MIT
+Educational use.

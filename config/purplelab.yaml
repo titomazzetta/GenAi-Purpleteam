@@ -1,14 +1,17 @@
-# PurpleLab Configuration
+# PurpleLab Configuration (Ollama-only)
+
 lab:
-  interface: eth0
+  # Network interface for Suricata/Zeek capture.
+  # Use "auto" to select the default-route interface.
+  interface: auto
   subnet: 10.10.10.0/24
+
+  # Target IP used by the emulation steps (curl/nmap/nc).
+  # In the single-VM demo flow, localhost is fine.
   target_ip: 127.0.0.1
 
+# Optional sensor locations (best-effort copies)
 wazuh:
-  manager_ip: 127.0.0.1
-  api:
-    user: wazuh-wui
-    password: "PurpleLab2025!"
   alerts_file: /var/ossec/logs/alerts/alerts.json
 
 suricata:
@@ -21,11 +24,18 @@ zeek:
 auditd:
   log_file: /var/log/audit/audit.log
 
+# Local LLM runtime (Ollama)
 ai:
   provider: ollama
-  model: mistral:7b
-  api_key: ""
+  model: mistral
   base_url: "http://localhost:11434"
+  timeout_s: 180
+
+# Feature toggles for setup
+features:
+  install_ollama: true
+  install_zeek: true
+  install_wazuh: false
 
 paths:
   runs_base: ./runs

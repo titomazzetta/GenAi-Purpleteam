@@ -1,0 +1,22 @@
+# Python bytecode / caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Runtime artifacts
+runs/
+logs/
+reports/
+*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
