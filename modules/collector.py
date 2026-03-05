@@ -266,6 +266,12 @@ def _parse_ts(ts: Any) -> Any:
     t = ts.strip()
     if not t:
         return None
+
+    # Suricata commonly emits timezone as -0500 (no colon), while
+    # datetime.fromisoformat expects -05:00 on some Python versions.
+    if len(t) > 5 and (t[-5] in {'+', '-'}) and t[-3] != ':':
+        t = t[:-2] + ':' + t[-2:]
+
     try:
         if t.endswith('Z'):
             return datetime.fromisoformat(t.replace('Z', '+00:00'))

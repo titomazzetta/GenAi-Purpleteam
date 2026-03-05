@@ -11,9 +11,48 @@ Built as a practical cybersecurity engineering project, this repository demonstr
 
 📖 Detailed system design: [Lab Architecture](LAB_ARCHITECTURE.md)
 
+> **Portfolio focus:** This README is optimized for technical reviewers and hiring managers to quickly assess architecture, implementation depth, and security engineering outcomes.
+
 ### Suggested GitHub "About" text
 
 `Automated purple team simulation on a single Debian/Kali VM — AI-generated attack scenarios, safe local emulation, multi-sensor log collection, and Ollama-powered defensive analysis with MITRE ATT&CK mapping.`
+
+## Portfolio Highlights
+
+- Built an end-to-end purple-team workflow in Python (scenario generation → emulation → collection → AI analysis → reporting)
+- Integrated multi-source telemetry (Suricata, auditd, optional Zeek/Wazuh) into a normalized timeline
+- Added MITRE ATT&CK technique mapping with detection coverage scoring to expose visibility gaps
+- Implemented local-LLM analysis via Ollama with deterministic fallback handling for demo resilience
+- Produced repeatable Markdown reports suitable for SOC-style incident review and capstone presentation
+
+## Implementation Map (Project Scope)
+
+**Threat scenario focus:**
+This lab models phishing-driven initial access in a controlled environment and evaluates defensive visibility through ATT&CK mapping, IOC extraction, and mitigation guidance.
+
+**What this project delivers:**
+The project demonstrates end-to-end Red + Blue operations using Generative AI for scenario generation, log analysis, IOC extraction, and defensive recommendations.
+
+### End-to-end workflow mapping
+
+1. **Set up GenAI attack simulation (Red Team)**  
+   Implemented via AI-generated phishing pretext and attack plan generation (`run generate` / `run demo` / `run full`).
+
+2. **Establish attacker environment**  
+   Implemented as **safe local emulation** to generate detection telemetry in lab conditions (non-destructive commands; no real malware deployment).
+
+3. **Begin Blue Team analysis**  
+   Implemented via multi-sensor collection (`collector.py`) and normalized timeline building for incident review.
+
+4. **Run SOC L2 response and threat detection**  
+   Implemented via AI-assisted insights, IOC extraction, ATT&CK mapping, detection-gap analysis, and draft defensive rule artifacts.
+
+5. **Compile final threat simulation report**  
+   Implemented via automated report generation in `runs/<timestamp>/report.md` with executive summary, evidence, coverage, and recommendations.
+
+> **Safety note:** This project intentionally uses non-destructive adversary emulation rather than live weaponized payload execution.
+>
+> **Note for instructors/reviewers:** If needed, this section can be used to map project deliverables to academic rubric checkpoints.
 
 ------------------------------------------------------------------------
 
@@ -345,6 +384,7 @@ Notes for reliable demo detections:
 
 - Run setup once first (`python3 purplelab.py setup`) so auditd/Suricata rules are in place.
 - Demo mode uses deterministic safe steps that are easier to detect across ARM64 and x86_64.
+- Demo includes benign payload/reverse-shell simulation markers (non-destructive) to exercise Blue Team detection and AI analysis paths.
 - If coverage is still low, verify sensor services are running and that your user can read/export logs.
 - Collection is non-blocking: if `sudo` needs a password, audit export is skipped instead of hanging.
 - If Ollama is offline, PurpleLab now generates deterministic fallback insights + candidate IOCs from telemetry so results are still useful.

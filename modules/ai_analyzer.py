@@ -59,6 +59,13 @@ def _heuristic_insights(bundle: Dict[str, Any]) -> Dict[str, Any]:
             q = dns.get("rrname") or dns.get("query")
             if isinstance(q, str):
                 add_ioc("domain-name", q.strip('.'), "Observed DNS query")
+            queries = dns.get("queries")
+            if isinstance(queries, list):
+                for rec in queries[:3]:
+                    if isinstance(rec, dict):
+                        rr = rec.get("rrname")
+                        if isinstance(rr, str):
+                            add_ioc("domain-name", rr.strip('.'), "Observed DNS query")
         q2 = e.get("query")
         if isinstance(q2, str):
             add_ioc("domain-name", q2.strip('.'), "Observed DNS query")
