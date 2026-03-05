@@ -1,9 +1,15 @@
+# PurpleLab Configuration
+
 lab:
-  interface: auto
+  interface: eth0
   subnet: 10.10.10.0/24
   target_ip: 127.0.0.1
 
 wazuh:
+  manager_ip: 127.0.0.1
+  api:
+    user: wazuh-wui
+    password: "PurpleLab2025!"
   alerts_file: /var/ossec/logs/alerts/alerts.json
 
 suricata:
@@ -16,27 +22,25 @@ zeek:
 auditd:
   log_file: /var/log/audit/audit.log
 
+
+# Enable / disable sensors
 sensors:
   suricata: true
   zeek: false
   wazuh: false
   auditd: true
 
-ai:
 
+# AI Analysis Configuration
+ai:
   enabled: true
   provider: ollama
-  host: "http://localhost:11434"
-  model_default: "mistral:latest"
-  model_fallbacks:
-    - "llama3:latest"
-    - "phi3:mini"
-  pull_default_on_setup: true
+  base_url: "http://localhost:11434"
+  model: "mistral:latest"
+  timeout_s: 600
+  max_events_for_ai: 15
+  max_bundle_chars: 60000
 
-features:
-  install_ollama: true
-  install_zeek: false
-  install_wazuh: false
 
 paths:
   runs_base: ./runs
