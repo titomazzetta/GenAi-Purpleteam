@@ -18,7 +18,7 @@ auditd:
 
 sensors:
   suricata: true
-  zeek: true
+  zeek: false
   wazuh: false
   auditd: true
 
@@ -35,7 +35,7 @@ ai:
 
 features:
   install_ollama: true
-  install_zeek: true
+  install_zeek: false
   install_wazuh: false
 
 paths:
