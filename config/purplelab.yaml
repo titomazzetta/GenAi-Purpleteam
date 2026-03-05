@@ -19,10 +19,11 @@ auditd:
 sensors:
   suricata: true
   zeek: true
-  wazuh: true
+  wazuh: false
   auditd: true
 
 ai:
+
   enabled: true
   provider: ollama
   host: "http://localhost:11434"
